@@ -22,7 +22,6 @@ env_vars=$($BUILDPACK_PATH/compile-extensions/bin/build_path_from_supply $DEPS_D
 for env_var in $env_vars; do
   export $env_var
 done
-$BUILDPACK_PATH/compile-extensions/bin/write_profiled_from_supply $DEPS_DIR $BUILD_DIR
 
 # Syntax sugar.
 source $BIN_DIR/utils
