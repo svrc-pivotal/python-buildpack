@@ -46,17 +46,6 @@ fi
 # Switch to the repo's context.
 cd $BUILD_DIR
 
-source $BIN_DIR/steps/mercurial
-
-# Uninstall removed dependencies with Pip.
-source $BIN_DIR/steps/pip-uninstall
-
-# Install dependencies with Pip (where the magic happens).
-source $BIN_DIR/steps/pip-install
-
-# Make sure all Pip installed dependencies use #!/usr/bin/env python
-$BIN_DIR/steps/rewrite-shebang
-
 # Support for NLTK corpora.
 $BIN_DIR/steps/nltk
 

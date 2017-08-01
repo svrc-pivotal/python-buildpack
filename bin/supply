@@ -97,6 +97,14 @@ source $BIN_DIR/steps/cryptography
 
 source $BIN_DIR/steps/pylibmc
 
+source $BIN_DIR/steps/mercurial
+
+# Uninstall removed dependencies with Pip.
+source $BIN_DIR/steps/pip-uninstall
+
+# Install dependencies with Pip (where the magic happens).
+source $BIN_DIR/steps/pip-install
+
 # Make sure all installed python binaries use #!/usr/bin/env python
 $BIN_DIR/steps/rewrite-shebang
 
