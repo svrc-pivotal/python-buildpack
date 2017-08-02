@@ -135,6 +135,9 @@ source $BIN_DIR/steps/pip-install
 
 $BIN_DIR/steps/rewrite-shebang
 
+# Support for NLTK corpora.
+$BIN_DIR/steps/nltk
+
 # cache everything
 cp -Rlf $DEPS_DIR/$DEPS_IDX/python $CACHE_DIR/
 if [[ -d $DEPS_DIR/$DEPS_IDX/src ]]; then

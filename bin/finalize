@@ -32,9 +32,6 @@ cd $BUILD_DIR
 # Use miniconda if environment.yml exists and exit
 if [ ! -f $BUILD_DIR/environment.yml ]; then
 
-  # Support for NLTK corpora.
-  $BIN_DIR/steps/nltk
-
   # Django collectstatic support.
   $BIN_DIR/steps/collectstatic
 
