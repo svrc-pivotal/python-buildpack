@@ -133,10 +133,10 @@ source $BIN_DIR/steps/pip-uninstall
 # Install dependencies with Pip (where the magic happens).
 source $BIN_DIR/steps/pip-install
 
-$BIN_DIR/steps/rewrite-shebang
-
 # Support for NLTK corpora.
 $BIN_DIR/steps/nltk
+
+$BIN_DIR/steps/rewrite-shebang
 
 # cache everything
 cp -Rlf $DEPS_DIR/$DEPS_IDX/python $CACHE_DIR/
