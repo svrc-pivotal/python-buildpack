@@ -134,3 +134,9 @@ source $BIN_DIR/steps/pip-uninstall
 source $BIN_DIR/steps/pip-install
 
 $BIN_DIR/steps/rewrite-shebang
+
+# cache everything
+cp -Rlf $DEPS_DIR/$DEPS_IDX/python $CACHE_DIR/
+if [[ -d $DEPS_DIR/$DEPS_IDX/src ]]; then
+  cp -Rlf $DEPS_DIR/$DEPS_IDX/src $CACHE_DIR/ &> /dev/null || true
+fi
