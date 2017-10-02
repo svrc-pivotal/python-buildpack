@@ -50,6 +50,82 @@ type Supplier struct {
 }
 
 func Run(s *Supplier) error {
+	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "environment.yml")); err != nil {
+		s.Log.Error("Error checking existence of environment.yml: %v", err)
+		return err
+	} else if exists {
+		s.Log.BeginStep("Supplying conda")
+
+		depName := "miniconda2"
+		if runtime, err := ioutil.ReadFile(filepath.Join(s.Stager.BuildDir(), "runtime.txt")); err == nil {
+			if strings.HasPrefix(string(runtime), "python-3") {
+				depName = "miniconda3"
+			}
+		}
+		if err := s.Manifest.InstallOnlyVersion(depName, "/tmp/miniconda.sh"); err != nil {
+			s.Log.Error("Error downloading miniconda: %v", err)
+			return err
+		}
+		if err := os.Chmod("/tmp/miniconda.sh", 0755); err != nil {
+			return err
+		}
+
+		s.Log.BeginStep("Installing Miniconda")
+		condaHome := filepath.Join(s.Stager.DepDir(), "conda")
+		if err := s.Command.Execute("/", indentWriter(os.Stdout), indentWriter(os.Stderr), "/tmp/miniconda.sh", "-b", "-p", condaHome); err != nil {
+			return err
+		}
+
+		// FIXME Conda cache -- https://github.com/cloudfoundry/python-buildpack/blob/master/bin/steps/conda-supply#L64-L72
+
+		s.Log.BeginStep("Installing Dependencies")
+		s.Log.BeginStep("Installing conda environment from environment.yml")
+
+		if err := s.Command.Execute("/", indentWriter(os.Stdout), indentWriter(os.Stderr), filepath.Join(condaHome, "bin", "conda"), "env", "update", "--quiet", "-n", "dep_env", "-f", filepath.Join(s.Stager.BuildDir(), "environment.yml")); err != nil {
+			s.Log.Error("Could not run conda env update: %v", err)
+			return fmt.Errorf("Could not run conda env update: %v", err)
+		}
+		if err := s.Command.Execute("/", indentWriter(os.Stdout), indentWriter(os.Stderr), filepath.Join(condaHome, "bin", "conda"), "clean", "-pt"); err != nil {
+			s.Log.Error("Could not run conda clean: %v", err)
+			return fmt.Errorf("Could not run conda clean: %v", err)
+		}
+
+		// FIXME Conda cache -- https://github.com/cloudfoundry/python-buildpack/blob/master/bin/steps/conda-supply#L81-L83
+
+		// Change deps
+		s.Log.BeginStep("Changing path to conda home")
+		if err := filepath.Walk(condaHome, func(path string, fi os.FileInfo, _ error) error {
+			if fi.IsDir() {
+				return nil
+			}
+			fileContents, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			if strings.Contains(string(fileContents), condaHome) {
+				s.Log.Debug("- %s", path)
+				fileContents = []byte(strings.Replace(string(fileContents), condaHome, fmt.Sprintf("$DEPS_DIR/%s/conda", s.Stager.DepsIdx()), -1))
+				if err := ioutil.WriteFile(path, fileContents, 0644); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			s.Log.Error("Could not fix DEPS_DIR links in conda: %v", err)
+			return fmt.Errorf("Could not fix DEPS_DIR links in conda: %v", err)
+		}
+
+		// Link
+		s.Stager.LinkDirectoryInDepDir(filepath.Join(condaHome, "bin"), "bin")
+
+		if err := s.Stager.WriteProfileD("conda.sh", "source activate dep_env\n"); err != nil {
+			return err
+		}
+
+		s.Log.BeginStep("Done")
+		return nil
+	}
+
 	s.Log.BeginStep("Supplying Python")
 
 	dirSnapshot := snapshot.Dir(s.Stager.BuildDir(), s.Log)

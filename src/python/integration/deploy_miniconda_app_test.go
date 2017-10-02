@@ -23,10 +23,10 @@ var _ = Describe("CF Python Buildpack", func() {
 
 	Context("an app that uses miniconda and python 2", func() {
 		BeforeEach(func() {
-			app = NewCutlassApp("miniconda_python_2")
+			app = cutlass.New(filepath.Join(bpDir, "fixtures", "miniconda_python_2"))
 		})
 
-		It("deploys", func() {
+		FIt("deploys", func() {
 			PushAppAndConfirm(app)
 
 			body, err := app.GetBody("/")
@@ -47,7 +47,7 @@ var _ = Describe("CF Python Buildpack", func() {
 			var err error
 			fixtureDir, err = cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "miniconda_python_3"))
 			Expect(err).ToNot(HaveOccurred())
-			app = NewCutlassAppFromFixture(fixtureDir)
+			app = cutlass.New(fixtureDir)
 		})
 		AfterEach(func() { _ = os.RemoveAll(fixtureDir) })
 
@@ -92,7 +92,7 @@ var _ = Describe("CF Python Buildpack", func() {
 
 	Context("an app that uses miniconda and specifies python 2 in runtime.txt but python3 in the environment.yml", func() {
 		BeforeEach(func() {
-			app = NewCutlassApp("miniconda_python_2_3")
+			app = cutlass.New(filepath.Join(bpDir, "fixtures", "miniconda_python_2_3"))
 		})
 
 		It("deploys", func() {
