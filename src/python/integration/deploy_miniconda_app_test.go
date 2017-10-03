@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("CF Python Buildpack", func() {
+var _ = Describe("CF Python Buildpack", func() {
 	var app *cutlass.App
 
 	AfterEach(func() {
@@ -24,9 +24,11 @@ var _ = FDescribe("CF Python Buildpack", func() {
 	Context("an app that uses miniconda and python 2", func() {
 		BeforeEach(func() {
 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "miniconda_python_2"))
+			app.Disk = "1G"
+			app.Memory = "500M"
 		})
 
-		FIt("deploys", func() {
+		It("deploys", func() {
 			PushAppAndConfirm(app)
 
 			body, err := app.GetBody("/")
@@ -48,6 +50,8 @@ var _ = FDescribe("CF Python Buildpack", func() {
 			fixtureDir, err = cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "miniconda_python_3"))
 			Expect(err).ToNot(HaveOccurred())
 			app = cutlass.New(fixtureDir)
+			app.Disk = "1G"
+			app.Memory = "500M"
 		})
 		AfterEach(func() { _ = os.RemoveAll(fixtureDir) })
 
@@ -73,7 +77,7 @@ var _ = FDescribe("CF Python Buildpack", func() {
 			Expect(app.Stdout.String()).ToNot(ContainSubstring("scipy"))
 		})
 
-		PIt("it updates dependencies if environment.yml changes", func() {
+		It("it updates dependencies if environment.yml changes", func() {
 			PushAppAndConfirm(app)
 			Expect(app.GetBody("/")).To(ContainSubstring("numpy: 1.10.4"))
 			Expect(app.GetBody("/")).ToNot(ContainSubstring("numpy: 1.11.0"))
@@ -93,6 +97,8 @@ var _ = FDescribe("CF Python Buildpack", func() {
 	Context("an app that uses miniconda and specifies python 2 in runtime.txt but python3 in the environment.yml", func() {
 		BeforeEach(func() {
 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "miniconda_python_2_3"))
+			app.Disk = "1G"
+			app.Memory = "500M"
 		})
 
 		It("deploys", func() {

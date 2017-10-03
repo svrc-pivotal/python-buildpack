@@ -49,6 +49,8 @@ func New(m Manifest, s Stager, c Command, l *libbuildpack.Logger) *Conda {
 }
 
 func Run(c *Conda) error {
+	c.Warning()
+
 	if err := c.Install(c.Version()); err != nil {
 		c.Log.Error("Could not install conda: %v", err)
 		return err
@@ -205,6 +207,22 @@ func (c *Conda) restoreCacheRewriteOldDepDir() error {
 		return err
 	}
 
+	return nil
+}
+
+func (c *Conda) Warning() error {
+	if exists, err := libbuildpack.FileExists(filepath.Join(c.Stager.BuildDir(), "runtime.txt")); err != nil {
+		return err
+	} else if !exists {
+		return nil
+	}
+	if contents, err := ioutil.ReadFile(filepath.Join(c.Stager.BuildDir(), "environment.yml")); err != nil {
+		return err
+	} else {
+		if bytes.Contains(contents, []byte("python=")) {
+			c.Log.Warning("you have specified the version of Python runtime both in 'runtime.txt' and 'environment.yml'. You should remove one of the two versions")
+		}
+	}
 	return nil
 }
 
