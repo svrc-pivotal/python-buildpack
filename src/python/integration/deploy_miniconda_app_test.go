@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("CF Python Buildpack", func() {
+var _ = FDescribe("CF Python Buildpack", func() {
 	var app *cutlass.App
 
 	AfterEach(func() {

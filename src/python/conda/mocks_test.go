@@ -179,3 +179,21 @@ func (mr *MockCommandMockRecorder) Execute(arg0, arg1, arg2, arg3 interface{}, a
 	varargs := append([]interface{}{arg0, arg1, arg2, arg3}, arg4...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockCommand)(nil).Execute), varargs...)
 }
+
+// Output mocks base method
+func (m *MockCommand) Output(dir, program string, args ...string) (string, error) {
+	varargs := []interface{}{dir, program}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Output", varargs...)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Output indicates an expected call of Output
+func (mr *MockCommandMockRecorder) Output(dir, program interface{}, args ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{dir, program}, args...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Output", reflect.TypeOf((*MockCommand)(nil).Output), varargs...)
+}

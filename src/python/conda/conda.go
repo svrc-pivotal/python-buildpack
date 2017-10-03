@@ -29,6 +29,7 @@ type Manifest interface {
 
 type Command interface {
 	Execute(string, io.Writer, io.Writer, string, ...string) error
+	Output(dir string, program string, args ...string) (string, error)
 }
 
 type Conda struct {
@@ -107,7 +108,7 @@ func (c *Conda) Install(version string) error {
 
 	c.Log.BeginStep("Installing Miniconda")
 	condaHome := filepath.Join(c.Stager.DepDir(), "conda")
-	if err := c.Command.Execute("/", indentWriter(os.Stdout), indentWriter(os.Stderr), installer, "-b", "-p", condaHome); err != nil {
+	if err := c.Command.Execute("/", indentWriter(os.Stdout), ioutil.Discard, installer, "-b", "-p", condaHome); err != nil {
 		return fmt.Errorf("Error installing miniconda: %v", err)
 	}
 
@@ -140,15 +141,18 @@ func (c *Conda) SaveCache() error {
 	if err := os.MkdirAll(filepath.Join(c.Stager.CacheDir(), "envs"), 0755); err != nil {
 		return err
 	}
-
 	if err := ioutil.WriteFile(filepath.Join(c.Stager.CacheDir(), "conda_prefix"), []byte(c.Stager.DepDir()), 0644); err != nil {
 		return err
 	}
+	if err := os.RemoveAll(filepath.Join(c.Stager.CacheDir(), "envs")); err != nil {
+		return err
+	}
 
-	return c.Command.Execute("/", ioutil.Discard, ioutil.Discard, "cp", "-Rl",
-		filepath.Join(c.Stager.DepDir(), "conda", "envs", "*"),
-		filepath.Join(c.Stager.CacheDir(), "envs"),
-	)
+	if output, err := c.Command.Output("/", "cp", "-Rl", filepath.Join(c.Stager.DepDir(), "conda", "envs"), filepath.Join(c.Stager.CacheDir(), "envs")); err != nil {
+		return fmt.Errorf("%s\n%v", output, err)
+	}
+
+	return nil
 }
 
 func (c *Conda) RestoreCache() error {
@@ -159,6 +163,11 @@ func (c *Conda) RestoreCache() error {
 	if err != nil {
 		return err
 	}
+
+	if len(dirs) > 0 {
+		c.Log.BeginStep("Using dependency cache at %s", filepath.Join(c.Stager.CacheDir(), "envs"))
+	}
+
 	for _, dir := range dirs {
 		os.Rename(dir, filepath.Join(c.Stager.DepDir(), "conda", "envs", path.Base(dir)))
 	}

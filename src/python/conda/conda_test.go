@@ -144,18 +144,13 @@ source activate dep_env
 	})
 
 	Describe("SaveCache", func() {
-		It("creates the cachedir envs directory", func() {
-			mockCommand.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-			Expect(subject.SaveCache()).To(Succeed())
-
-			Expect(filepath.Join(cacheDir, "envs")).To(BeADirectory())
-		})
 		It("copies the conda envs dir to cache", func() {
-			mockCommand.EXPECT().Execute("/", gomock.Any(), gomock.Any(), "cp", "-Rl", filepath.Join(depDir, "conda", "envs", "*"), filepath.Join(cacheDir, "envs"))
+			mockCommand.EXPECT().Output("/", "cp", "-Rl", filepath.Join(depDir, "conda", "envs"), filepath.Join(cacheDir, "envs"))
+
 			Expect(subject.SaveCache()).To(Succeed())
 		})
 		It("stores dep dir in cache as conda_prefix", func() {
-			mockCommand.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+			mockCommand.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			Expect(subject.SaveCache()).To(Succeed())
 
 			Expect(filepath.Join(cacheDir, "conda_prefix")).To(BeARegularFile())
@@ -171,7 +166,7 @@ source activate dep_env
 		})
 		Context("envs cache exists", func() {
 			BeforeEach(func() {
-				Expect(ioutil.WriteFile(filepath.Join(cacheDir, "conda_prefix"), []byte("/old/dep/dir"), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(cacheDir, "conda_prefix"), []byte("/old/dep/dir\n"), 0644)).To(Succeed())
 
 				Expect(os.MkdirAll(filepath.Join(cacheDir, "envs", "dir1", "dir2"), 0755)).To(Succeed())
 				Expect(ioutil.WriteFile(filepath.Join(cacheDir, "envs", "dir1", "dir2", "file"), []byte("contents"), 0644)).To(Succeed())
