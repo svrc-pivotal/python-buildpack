@@ -1,10 +1,12 @@
 package conda
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -51,14 +53,20 @@ func Run(c *Conda) error {
 		return err
 	}
 
-	// FIXME Conda cache -- https://github.com/cloudfoundry/python-buildpack/blob/master/bin/steps/conda-supply#L64-L72
+	if err := c.RestoreCache(); err != nil {
+		c.Log.Error("Could not restore conda envs cache: %v", err)
+		return err
+	}
 
 	if err := c.UpdateAndClean(); err != nil {
 		c.Log.Error("Could not update conda env: %v", err)
 		return err
 	}
 
-	// FIXME Conda cache -- https://github.com/cloudfoundry/python-buildpack/blob/master/bin/steps/conda-supply#L81-L83
+	if err := c.SaveCache(); err != nil {
+		c.Log.Error("Could not save conda envs cache: %v", err)
+		return err
+	}
 
 	c.Stager.LinkDirectoryInDepDir(filepath.Join(c.Stager.DepDir(), "conda", "bin"), "bin")
 	if err := c.Stager.WriteProfileD("conda.sh", c.ProfileD()); err != nil {
@@ -126,6 +134,69 @@ func (c *Conda) ProfileD() string {
 	return fmt.Sprintf(`grep -rlI %s $DEPS_DIR/%s/conda | xargs sed -i -e "s|%s|$DEPS_DIR/%s|g"
 source activate dep_env
 `, c.Stager.DepDir(), c.Stager.DepsIdx(), c.Stager.DepDir(), c.Stager.DepsIdx())
+}
+
+func (c *Conda) SaveCache() error {
+	if err := os.MkdirAll(filepath.Join(c.Stager.CacheDir(), "envs"), 0755); err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(filepath.Join(c.Stager.CacheDir(), "conda_prefix"), []byte(c.Stager.DepDir()), 0644); err != nil {
+		return err
+	}
+
+	return c.Command.Execute("/", ioutil.Discard, ioutil.Discard, "cp", "-Rl",
+		filepath.Join(c.Stager.DepDir(), "conda", "envs", "*"),
+		filepath.Join(c.Stager.CacheDir(), "envs"),
+	)
+}
+
+func (c *Conda) RestoreCache() error {
+	if err := os.MkdirAll(filepath.Join(c.Stager.DepDir(), "conda", "envs"), 0755); err != nil {
+		return err
+	}
+	dirs, err := filepath.Glob(filepath.Join(c.Stager.CacheDir(), "envs", "*"))
+	if err != nil {
+		return err
+	}
+	for _, dir := range dirs {
+		os.Rename(dir, filepath.Join(c.Stager.DepDir(), "conda", "envs", path.Base(dir)))
+	}
+
+	return c.restoreCacheRewriteOldDepDir()
+}
+
+func (c *Conda) restoreCacheRewriteOldDepDir() error {
+	bPrefix, err := ioutil.ReadFile(filepath.Join(c.Stager.CacheDir(), "conda_prefix"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	prefix := strings.TrimSpace(string(bPrefix))
+
+	// grep -rlI $prefix $DEPS_DIR/$DEPS_IDX/conda | xargs sed -i -e "s|$prefix|$DEPS_DIR/$DEPS_IDX|g"
+	if err := filepath.Walk(filepath.Join(c.Stager.DepDir(), "conda", "envs"), func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		if contents, err := ioutil.ReadFile(path); err != nil {
+			return err
+		} else {
+			if bytes.Contains(contents, []byte(prefix)) {
+				contents = bytes.Replace(contents, []byte(prefix), []byte(c.Stager.DepDir()), -1)
+				if err := ioutil.WriteFile(path, contents, 0644); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func indentWriter(writer io.Writer) io.Writer {

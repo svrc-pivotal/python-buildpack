@@ -142,4 +142,63 @@ var _ = Describe("Conda", func() {
 source activate dep_env
 `))
 	})
+
+	Describe("SaveCache", func() {
+		It("creates the cachedir envs directory", func() {
+			mockCommand.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+			Expect(subject.SaveCache()).To(Succeed())
+
+			Expect(filepath.Join(cacheDir, "envs")).To(BeADirectory())
+		})
+		It("copies the conda envs dir to cache", func() {
+			mockCommand.EXPECT().Execute("/", gomock.Any(), gomock.Any(), "cp", "-Rl", filepath.Join(depDir, "conda", "envs", "*"), filepath.Join(cacheDir, "envs"))
+			Expect(subject.SaveCache()).To(Succeed())
+		})
+		It("stores dep dir in cache as conda_prefix", func() {
+			mockCommand.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+			Expect(subject.SaveCache()).To(Succeed())
+
+			Expect(filepath.Join(cacheDir, "conda_prefix")).To(BeARegularFile())
+			Expect(ioutil.ReadFile(filepath.Join(cacheDir, "conda_prefix"))).To(Equal([]byte(depDir)))
+		})
+	})
+
+	Describe("RestoreCache", func() {
+		Context("no cache", func() {
+			It("does nothing", func() {
+				Expect(subject.RestoreCache()).To(Succeed())
+			})
+		})
+		Context("envs cache exists", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(cacheDir, "conda_prefix"), []byte("/old/dep/dir"), 0644)).To(Succeed())
+
+				Expect(os.MkdirAll(filepath.Join(cacheDir, "envs", "dir1", "dir2"), 0755)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(cacheDir, "envs", "dir1", "dir2", "file"), []byte("contents"), 0644)).To(Succeed())
+
+				Expect(os.MkdirAll(filepath.Join(depDir, "conda", "envs", "existing"), 0755)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(depDir, "conda", "envs", "existing", "file"), []byte("contents"), 0644)).To(Succeed())
+			})
+			It("moves copies cache envs directories to conda directory", func() {
+				Expect(subject.RestoreCache()).To(Succeed())
+
+				Expect(filepath.Join(depDir, "conda", "envs", "dir1", "dir2", "file")).To(BeARegularFile())
+				Expect(ioutil.ReadFile(filepath.Join(depDir, "conda", "envs", "dir1", "dir2", "file"))).To(Equal([]byte("contents")))
+			})
+			It("does not alter existing files in conda envs", func() {
+				Expect(subject.RestoreCache()).To(Succeed())
+
+				Expect(filepath.Join(depDir, "conda", "envs", "existing", "file")).To(BeARegularFile())
+				Expect(ioutil.ReadFile(filepath.Join(depDir, "conda", "envs", "existing", "file"))).To(Equal([]byte("contents")))
+			})
+			It("converts old depDir to new depDir", func() {
+				Expect(ioutil.WriteFile(filepath.Join(cacheDir, "envs", "dir1", "dir2", "file"), []byte("run /old/dep/dir/conda"), 0644)).To(Succeed())
+
+				Expect(subject.RestoreCache()).To(Succeed())
+
+				Expect(filepath.Join(depDir, "conda", "envs", "dir1", "dir2", "file")).To(BeARegularFile())
+				Expect(ioutil.ReadFile(filepath.Join(depDir, "conda", "envs", "dir1", "dir2", "file"))).To(Equal([]byte("run " + depDir + "/conda")))
+			})
+		})
+	})
 })
