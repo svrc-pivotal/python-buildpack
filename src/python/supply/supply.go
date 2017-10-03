@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"python/conda"
 	"python/pipfile"
 	"regexp"
 	"strings"
@@ -54,63 +55,10 @@ func Run(s *Supplier) error {
 		s.Log.Error("Error checking existence of environment.yml: %v", err)
 		return err
 	} else if exists {
-		return RunConda(s)
+		return conda.Run(conda.New(s.Manifest, s.Stager, s.Command, s.Log))
 	} else {
 		return RunPython(s)
 	}
-}
-
-func RunConda(s *Supplier) error {
-	s.Log.BeginStep("Supplying conda")
-
-	depName := "miniconda2"
-	if runtime, err := ioutil.ReadFile(filepath.Join(s.Stager.BuildDir(), "runtime.txt")); err == nil {
-		if strings.HasPrefix(string(runtime), "python-3") {
-			depName = "miniconda3"
-		}
-	}
-	if err := s.Manifest.InstallOnlyVersion(depName, "/tmp/miniconda.sh"); err != nil {
-		s.Log.Error("Error downloading miniconda: %v", err)
-		return err
-	}
-	if err := os.Chmod("/tmp/miniconda.sh", 0755); err != nil {
-		return err
-	}
-
-	s.Log.BeginStep("Installing Miniconda")
-	condaHome := filepath.Join(s.Stager.DepDir(), "conda")
-	if err := s.Command.Execute("/", indentWriter(os.Stdout), indentWriter(os.Stderr), "/tmp/miniconda.sh", "-b", "-p", condaHome); err != nil {
-		return err
-	}
-
-	// FIXME Conda cache -- https://github.com/cloudfoundry/python-buildpack/blob/master/bin/steps/conda-supply#L64-L72
-
-	s.Log.BeginStep("Installing Dependencies")
-	s.Log.BeginStep("Installing conda environment from environment.yml")
-
-	if err := s.Command.Execute("/", indentWriter(os.Stdout), indentWriter(os.Stderr), filepath.Join(condaHome, "bin", "conda"), "env", "update", "--quiet", "-n", "dep_env", "-f", filepath.Join(s.Stager.BuildDir(), "environment.yml")); err != nil {
-		s.Log.Error("Could not run conda env update: %v", err)
-		return fmt.Errorf("Could not run conda env update: %v", err)
-	}
-	if err := s.Command.Execute("/", indentWriter(os.Stdout), indentWriter(os.Stderr), filepath.Join(condaHome, "bin", "conda"), "clean", "-pt"); err != nil {
-		s.Log.Error("Could not run conda clean: %v", err)
-		return fmt.Errorf("Could not run conda clean: %v", err)
-	}
-
-	// FIXME Conda cache -- https://github.com/cloudfoundry/python-buildpack/blob/master/bin/steps/conda-supply#L81-L83
-
-	// Link
-	s.Stager.LinkDirectoryInDepDir(filepath.Join(condaHome, "bin"), "bin")
-
-	if err := s.Stager.WriteProfileD("conda.sh", fmt.Sprintf(`
-grep -rlI %s $DEPS_DIR/%s/conda | xargs sed -i -e "s|%s|$DEPS_DIR/%s|g"
-source activate dep_env
-`, s.Stager.DepDir(), s.Stager.DepsIdx(), s.Stager.DepDir(), s.Stager.DepsIdx())); err != nil {
-		return err
-	}
-
-	s.Log.BeginStep("Done")
-	return nil
 }
 
 func RunPython(s *Supplier) error {
