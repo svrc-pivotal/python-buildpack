@@ -14,7 +14,7 @@ port = int(sys.argv[1])
 
 @app.route("/")
 def hello():
-    return "Hello, World"
+    return "Hello World!"
 
 @app.route("/version")
 def version():
