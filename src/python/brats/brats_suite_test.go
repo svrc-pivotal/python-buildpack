@@ -53,7 +53,7 @@ func CopyBrats(version string) *cutlass.App {
 	dir, err := cutlass.CopyFixture(filepath.Join(bratshelper.Data.BpDir, "fixtures", "brats"))
 	Expect(err).ToNot(HaveOccurred())
 
-	if python == "" {
+	if version == "" {
 		manifest, err := libbuildpack.NewManifest(bratshelper.Data.BpDir, nil, time.Now())
 		Expect(err).ToNot(HaveOccurred())
 		dep, err := manifest.DefaultVersion("python")

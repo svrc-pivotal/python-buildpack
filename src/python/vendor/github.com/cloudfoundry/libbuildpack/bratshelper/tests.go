@@ -64,10 +64,10 @@ func DeployingAnAppWithAnUpdatedVersionOfTheSameBuildpack(copyBrats func(string)
 			app = copyBrats("")
 			app.Buildpacks = []string{bpName + "_buildpack"}
 		})
-		// AfterEach(func() {
-		// 	defaultCleanup(app)
-		// 	Expect(cutlass.DeleteBuildpack(bpName)).To(Succeed())
-		// })
+		AfterEach(func() {
+			defaultCleanup(app)
+			Expect(cutlass.DeleteBuildpack(bpName)).To(Succeed())
+		})
 
 		It("prints useful warning message to stdout", func() {
 			Expect(cutlass.CreateOrUpdateBuildpack(bpName, Data.UncachedFile)).To(Succeed())
