@@ -1,0 +1,3 @@
+--trusted-host asodha.local.pcfdev.io
+--index-url http://asodha.local.pcfdev.io/
+animals
