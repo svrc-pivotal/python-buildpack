@@ -3,6 +3,7 @@ dependencies:
 - pip
 - pytest
 - flask
+- pymssql
 - nose
 - numpy=1.10.4
 - scipy=0.17.0
